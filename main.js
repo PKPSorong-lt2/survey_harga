@@ -1,229 +1,283 @@
 // ==========================================
-// MAIN.JS - Core Functionality
+// MINIMAL.JS - Simple & Direct
 // ==========================================
 
-// Smooth scrolling
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener('click', function (e) {
-    e.preventDefault();
-    const target = document.querySelector(this.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }
-  });
-});
-
-// Active navigation on scroll
-window.addEventListener('scroll', () => {
-  const sections = document.querySelectorAll('section[id]');
-  const scrollY = window.pageYOffset;
-
-  sections.forEach(section => {
-    const sectionHeight = section.offsetHeight;
-    const sectionTop = section.offsetTop - 100;
-    const sectionId = section.getAttribute('id');
-    
-    if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
-      document.querySelectorAll('.nav-menu a').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href') === `#${sectionId}`) {
-          link.classList.add('active');
-        }
-      });
-    }
-  });
-
-  // Navbar background on scroll
-  const navbar = document.querySelector('.navbar');
-  if (scrollY > 100) {
-    navbar.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-  } else {
-    navbar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-  }
-});
-
-// Counter animation
-const animateCounters = () => {
-  const counters = document.querySelectorAll('.stat-number');
-  
-  counters.forEach(counter => {
-    const target = parseInt(counter.getAttribute('data-target'));
-    const duration = 2000;
-    const increment = target / (duration / 16);
-    let current = 0;
-    
-    const updateCounter = () => {
-      current += increment;
-      if (current < target) {
-        counter.textContent = Math.floor(current);
-        requestAnimationFrame(updateCounter);
-      } else {
-        counter.textContent = target;
-      }
-    };
-    
-    updateCounter();
-  });
+// Configuration
+let config = {
+  appsScriptUrl: localStorage.getItem('appsScriptUrl') || ''
 };
 
-// Trigger counter when hero is in view
-const heroObserver = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      animateCounters();
-      heroObserver.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.5 });
+// ==========================================
+// INITIALIZATION
+// ==========================================
 
-const heroSection = document.querySelector('.hero');
-if (heroSection) {
-  heroObserver.observe(heroSection);
-}
-
-// Mobile menu toggle
-const navToggle = document.querySelector('.nav-toggle');
-const navMenu = document.querySelector('.nav-menu');
-
-if (navToggle) {
-  navToggle.addEventListener('click', () => {
-    navMenu.classList.toggle('active');
-    navToggle.classList.toggle('active');
-  });
-}
-
-// Close mobile menu on link click
-document.querySelectorAll('.nav-menu a').forEach(link => {
-  link.addEventListener('click', () => {
-    navMenu.classList.remove('active');
-    navToggle.classList.remove('active');
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  loadConfig();
+  loadStats();
+  setupAutoRefresh();
 });
 
-// Contact form submission
-const contactForm = document.getElementById('contactForm');
-if (contactForm) {
-  contactForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const formData = new FormData(contactForm);
-    const data = Object.fromEntries(formData);
-    
-    // Show loading
-    const submitBtn = contactForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim...';
-    submitBtn.disabled = true;
-    
-    try {
-      // TODO: Send to Apps Script
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Success
-      alert('✅ Pesan berhasil dikirim! Kami akan segera menghubungi Anda.');
-      contactForm.reset();
-    } catch (error) {
-      alert('❌ Gagal mengirim pesan. Silakan coba lagi.');
-    } finally {
-      submitBtn.innerHTML = originalText;
-      submitBtn.disabled = false;
-    }
-  });
+// Load config from localStorage
+function loadConfig() {
+  const url = localStorage.getItem('appsScriptUrl');
+  if (url) {
+    document.getElementById('appsScriptUrl').value = url;
+    config.appsScriptUrl = url;
+  }
 }
 
-// Config management
+// ==========================================
+// CONFIG MODAL
+// ==========================================
+
+function showConfig() {
+  document.getElementById('configModal').classList.add('show');
+}
+
+function closeConfig() {
+  document.getElementById('configModal').classList.remove('show');
+}
+
 function saveConfig() {
-  const url = document.getElementById('appsScriptUrl').value;
+  const url = document.getElementById('appsScriptUrl').value.trim();
   
   if (!url) {
-    alert('❌ Mohon masukkan URL Apps Script terlebih dahulu');
+    showToast('Mohon masukkan URL Apps Script', 'error');
     return;
   }
   
   if (!url.includes('script.google.com')) {
-    alert('❌ URL tidak valid. Pastikan URL dari Google Apps Script');
+    showToast('URL tidak valid', 'error');
     return;
   }
   
   localStorage.setItem('appsScriptUrl', url);
-  alert('✅ Konfigurasi berhasil disimpan!');
-}
-
-function getConfig() {
-  return localStorage.getItem('appsScriptUrl') || '';
-}
-
-// Load config on page load
-document.addEventListener('DOMContentLoaded', () => {
-  const urlInput = document.getElementById('appsScriptUrl');
-  if (urlInput) {
-    urlInput.value = getConfig();
-  }
-});
-
-// Open survey form
-function openSurveyForm(type) {
-  const url = getConfig();
+  config.appsScriptUrl = url;
   
-  if (!url) {
-    alert('⚠️ Mohon konfigurasi URL Apps Script terlebih dahulu');
-    document.getElementById('appsScriptUrl').focus();
-    return;
-  }
-  
-  if (type === 'kebutuhan') {
-    window.open('survey-kebutuhan.html', '_blank');
-  } else if (type === 'survey') {
-    window.open('survey-harga.html', '_blank');
-  }
+  showToast('Konfigurasi berhasil disimpan!', 'success');
+  closeConfig();
 }
 
-// Open dashboard
+// ==========================================
+// HELP MODAL
+// ==========================================
+
+function showHelp() {
+  document.getElementById('helpModal').classList.add('show');
+}
+
+function closeHelp() {
+  document.getElementById('helpModal').classList.remove('show');
+}
+
+// ==========================================
+// TOAST NOTIFICATION
+// ==========================================
+
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = `toast ${type} show`;
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+// ==========================================
+// STATS
+// ==========================================
+
+async function loadStats() {
+  // Mock data - replace with actual API call
+  const stats = {
+    transaksi: 42,
+    survey: 28,
+    dokumen: 156,
+    progress: 75
+  };
+  
+  // Animate counters
+  animateCounter('totalTransaksi', stats.transaksi);
+  animateCounter('totalSurvey', stats.survey);
+  animateCounter('totalDokumen', stats.dokumen);
+  
+  document.getElementById('progressPersen').textContent = stats.progress + '%';
+  
+  // If you want to load from Apps Script:
+  // const data = await apiRequest('getStats');
+  // animateCounter('totalTransaksi', data.transaksi);
+  // etc...
+}
+
+function animateCounter(id, target) {
+  const element = document.getElementById(id);
+  let current = 0;
+  const increment = target / 30;
+  
+  const timer = setInterval(() => {
+    current += increment;
+    if (current >= target) {
+      element.textContent = target;
+      clearInterval(timer);
+    } else {
+      element.textContent = Math.floor(current);
+    }
+  }, 30);
+}
+
+// Auto-refresh stats every 5 minutes
+function setupAutoRefresh() {
+  setInterval(loadStats, 5 * 60 * 1000);
+}
+
+// ==========================================
+// ACTIONS
+// ==========================================
+
+function surveyBaru() {
+  if (!checkConfig()) return;
+  
+  // Option 1: Open form page
+  window.open('survey-form.html', '_blank');
+  
+  // Option 2: Call Apps Script directly
+  // const url = config.appsScriptUrl + '?action=showSurveyForm';
+  // window.open(url, '_blank');
+}
+
+function lihatSurvey() {
+  if (!checkConfig()) return;
+  window.open('survey-list.html', '_blank');
+}
+
+function inputTransaksi() {
+  if (!checkConfig()) return;
+  window.open('transaksi-form.html', '_blank');
+}
+
+function lihatTransaksi() {
+  if (!checkConfig()) return;
+  window.open('transaksi-list.html', '_blank');
+}
+
+function generateDok() {
+  if (!checkConfig()) return;
+  window.open('generate-dokumen.html', '_blank');
+}
+
+function uploadDok() {
+  if (!checkConfig()) return;
+  window.open('upload-dokumen.html', '_blank');
+}
+
 function openDashboard() {
-  const url = getConfig();
-  
-  if (!url) {
-    alert('⚠️ Mohon konfigurasi URL Apps Script terlebih dahulu');
-    document.getElementById('appsScriptUrl').focus();
-    return;
-  }
-  
+  if (!checkConfig()) return;
   window.open('dashboard.html', '_blank');
 }
 
-// Animation on scroll
-const observeElements = () => {
-  const elements = document.querySelectorAll('.feature-card, .doc-card, .survey-option');
+function downloadLaporan() {
+  if (!checkConfig()) return;
   
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = '0';
-        entry.target.style.transform = 'translateY(20px)';
-        
-        setTimeout(() => {
-          entry.target.style.transition = 'all 0.6s ease';
-          entry.target.style.opacity = '1';
-          entry.target.style.transform = 'translateY(0)';
-        }, 100);
-        
-        observer.unobserve(entry.target);
+  showToast('Generating laporan...', 'success');
+  
+  // Call Apps Script to generate report
+  apiRequest('generateLaporan')
+    .then(result => {
+      if (result.success) {
+        window.open(result.url, '_blank');
+        showToast('Laporan berhasil dibuat!', 'success');
+      } else {
+        showToast('Gagal generate laporan', 'error');
       }
+    })
+    .catch(error => {
+      showToast('Error: ' + error.message, 'error');
     });
-  }, { threshold: 0.1 });
+}
+
+// ==========================================
+// API HELPER
+// ==========================================
+
+function checkConfig() {
+  if (!config.appsScriptUrl) {
+    showToast('Mohon konfigurasi Apps Script URL terlebih dahulu', 'error');
+    showConfig();
+    return false;
+  }
+  return true;
+}
+
+async function apiRequest(action, data = {}) {
+  if (!config.appsScriptUrl) {
+    throw new Error('Apps Script URL not configured');
+  }
   
-  elements.forEach(el => observer.observe(el));
-};
+  try {
+    const response = await fetch(config.appsScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: action,
+        data: data
+      })
+    });
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+}
 
-document.addEventListener('DOMContentLoaded', observeElements);
+// ==========================================
+// KEYBOARD SHORTCUTS
+// ==========================================
 
-// Prevent right-click on demo (optional)
-// document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', (e) => {
+  // Ctrl/Cmd + K = Config
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    showConfig();
+  }
+  
+  // Ctrl/Cmd + H = Help
+  if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+    e.preventDefault();
+    showHelp();
+  }
+  
+  // Escape = Close modals
+  if (e.key === 'Escape') {
+    closeConfig();
+    closeHelp();
+  }
+});
 
-// Console welcome message
-console.log('%c🌊 Sistem Procurement Intelligence ', 'font-size: 20px; color: #1565C0; font-weight: bold;');
-console.log('%cPoliteknik Kelautan dan Perikanan Sorong', 'font-size: 14px; color: #666;');
-console.log('%cDeveloped with ❤️ by PPK Team', 'font-size: 12px; color: #999;');
+// ==========================================
+// MODAL BACKDROP CLICK
+// ==========================================
+
+document.getElementById('configModal').addEventListener('click', (e) => {
+  if (e.target.id === 'configModal') {
+    closeConfig();
+  }
+});
+
+document.getElementById('helpModal').addEventListener('click', (e) => {
+  if (e.target.id === 'helpModal') {
+    closeHelp();
+  }
+});
+
+// ==========================================
+// CONSOLE INFO
+// ==========================================
+
+console.log('%c🌊 Sistem Procurement Intelligence', 'font-size: 18px; color: #1976d2; font-weight: bold;');
+console.log('%cPoliteknik KP Sorong', 'font-size: 14px; color: #666;');
+console.log('%cV2.0 - Minimal & Fast', 'font-size: 12px; color: #999;');
